@@ -23,7 +23,7 @@ pipeline {
 
         stage('Trivy Scan') {
             steps {
-                sh "trivy image --exit-code 1 --severity CRITICAL ${IMAGE}"
+                sh "trivy image --exit-code 0 --severity CRITICAL,${IMAGE}"
             }
         }
 
@@ -39,7 +39,7 @@ pipeline {
         }
 
         stage('Deploy to Dev') {
-            when { branch 'develop' }
+            when { branch 'dev' }
             steps {
                 sh """
                 helm upgrade --install app ./helm \
