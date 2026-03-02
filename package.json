@@ -1,0 +1,12 @@
+{
+  "name": "eks-demo-app",
+  "version": "1.0.0",
+  "description": "Simple app for Jenkins -> ECR -> EKS",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
