@@ -41,7 +41,16 @@ pipeline {
   }
  }
 
- stage('Approval'){
+  stage('Switch Traffic to BLUE') {
+   steps {
+    sh """
+     kubectl patch service eks-demo-service \
+     -p '{"spec":{"selector":{"app":"eks-demo","version":"blue"}}}'
+      """
+ }
+}
+ 
+  stage('Approval'){
   steps{
    input "Switch traffic to GREEN?"
   }
