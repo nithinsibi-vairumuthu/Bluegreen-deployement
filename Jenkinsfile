@@ -11,7 +11,7 @@ pipeline {
 
  stage('Build Image'){
   steps{
-   sh "docker build -t prod-app:${IMAGE_TAG} ."
+   sh "docker build -t prod-app:${IMAGE_TAG} -f app/Dockerfile app/"
   }
  }
 
