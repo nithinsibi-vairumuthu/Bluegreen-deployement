@@ -1,97 +1,60 @@
 pipeline {
-    agent any
+ agent any
 
-    environment {
-        AWS_REGION = 'ap-south-1'
-        ECR_REPO = '730335674713.dkr.ecr.ap-south-1.amazonaws.com/prod-app'
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        IMAGE = "${ECR_REPO}:${IMAGE_TAG}"
-    }
+ environment {
+  AWS_REGION="ap-south-1"
+  CLUSTER="devops-eks-cluster"
+  IMAGE_TAG="${BUILD_NUMBER}"
+ }
 
-    stages {
+ stages {
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
+ stage('Build Image'){
+  steps{
+   sh "docker build -t prod-app:${IMAGE_TAG} ."
+  }
+ }
 
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build --no-cache -t ${IMAGE} ."
-            }
-        }
+ stage('Push ECR'){
+  steps{
+   sh """
+   aws ecr get-login-password --region ${AWS_REGION} \
+   | docker login --username AWS --password-stdin 730335674713.dkr.ecr.ap-south-1.amazonaws.com
 
-        stage('Login to ECR') {
-            steps {
-                sh """
-                aws ecr get-login-password --region ${AWS_REGION} | \
-                docker login --username AWS --password-stdin ${ECR_REPO}
-                """
-            }
-        }
+   docker tag prod-app:${IMAGE_TAG} \
+   730335674713.dkr.ecr.ap-south-1.amazonaws.com/prod-app:${IMAGE_TAG}
 
-        stage('Push to ECR') {
-            steps {
-                sh "docker push ${IMAGE}"
-            }
-        }
+   docker push 730335674713.dkr.ecr.ap-south-1.amazonaws.com/prod-app:${IMAGE_TAG}
+   """
+  }
+ }
 
-        stage('Deploy to Dev') {
-            when {
-                branch 'dev'
-            }
-            steps {
-                sh """
-                kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
+ stage('Deploy GREEN'){
+  steps{
+   sh """
+   aws eks update-kubeconfig --name ${CLUSTER}
 
-                sed -i 's|IMAGE_PLACEHOLDER|${IMAGE}|g' k8s/deployment.yaml
+   helm upgrade --install eks-demo ./helm/eks-demo \
+   --set image.tag=${IMAGE_TAG} \
+   --set activeColor=green
+   """
+  }
+ }
 
-                kubectl apply -n dev -f k8s/deployment.yaml
-                kubectl apply -n dev -f k8s/service.yaml
+ stage('Approval'){
+  steps{
+   input "Switch traffic to GREEN?"
+  }
+ }
 
-                kubectl rollout status deployment/eks-demo -n dev
-                """
-            }
-        }
+ stage('Switch Traffic'){
+  steps{
+   sh """
+   helm upgrade eks-demo ./helm/eks-demo \
+   --set activeColor=green
+   """
+  }
+ }
 
-        stage('Approval for Prod') {
-            when {
-                branch 'main'
-            }
-            steps {
-                input message: "Deploy to Production?"
-            }
-        }
-
-        stage('Deploy to Prod') {
-            when {
-                branch 'main'
-            }
-            steps {
-                sh """
-                kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
-
-                sed -i 's|IMAGE_PLACEHOLDER|${IMAGE}|g' k8s/deployment.yaml
-
-                kubectl apply -n prod -f k8s/deployment.yaml
-                kubectl apply -n prod -f k8s/service.yaml
-
-                kubectl rollout status deployment/eks-demo -n prod
-                """
-            }
-        }
-    }
-
-    post {
-        always {
-            sh "docker image prune -f"
-        }
-        success {
-            echo "CI/CD Completed Successfully 🚀"
-        }
-        failure {
-            echo "Pipeline Failed ❌"
-        }
-    }
+ }
 }
