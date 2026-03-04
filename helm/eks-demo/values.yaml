@@ -1,0 +1,7 @@
+image:
+  repository: 730335674713.dkr.ecr.ap-south-1.amazonaws.com/prod-app
+  tag: latest
+
+activeColor: blue
+
+replicaCount: 2

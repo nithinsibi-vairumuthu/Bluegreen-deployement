@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eks-demo-blue
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: eks-demo
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: eks-demo
+        version: blue
+    spec:
+      containers:
+      - name: eks-demo
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        ports:
+        - containerPort: 3000
